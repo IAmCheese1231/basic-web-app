@@ -18,11 +18,19 @@ export default function QueryProcessor(query: string): string {
     return "Ethan";
   }
 
-  const plus = q.match(/^what is (-?\d+) plus (-?\d+)\??$/);
-  if (plus) {
-    const a = parseInt(plus[1], 10);
-    const b = parseInt(plus[2], 10);
-    return String(a + b);
+  const power = q.match(/^what is (-?\d+) to the power of (-?\d+)\??$/);
+  if (power) {
+    const a = BigInt(power[1]);
+    const b = BigInt(power[2]);
+    if (b < 0n) return "";
+    return (a ** b).toString();
+  }
+
+  const mult = q.match(/^what is (-?\d+) multiplied by (-?\d+)\??$/);
+  if (mult) {
+    const a = parseInt(mult[1], 10);
+    const b = parseInt(mult[2], 10);
+    return String(a * b);
   }
 
   const minus = q.match(/^what is (-?\d+) minus (-?\d+)\??$/);
@@ -32,11 +40,17 @@ export default function QueryProcessor(query: string): string {
     return String(a - b);
   }
 
-  const mult = q.match(/^what is (-?\d+) multiplied by (-?\d+)\??$/);
-  if (mult) {
-    const a = parseInt(mult[1], 10);
-    const b = parseInt(mult[2], 10);
-    return String(a * b);
+  const multiPlus = q.match(/^what is (.+)\??$/);
+  if (multiPlus && q.includes("plus")) {
+    const nums = multiPlus[1]
+      .split("plus")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !Number.isNaN(n));
+    if (nums.length > 0) {
+      let sum = 0;
+      for (let i = 0; i < nums.length; i++) sum += nums[i];
+      return String(sum);
+    }
   }
 
   const largest = q.match(
