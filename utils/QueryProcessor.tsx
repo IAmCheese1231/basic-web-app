@@ -20,61 +20,118 @@ export default function QueryProcessor(query: string): string {
 
   const power = q.match(/^what is (-?\d+) to the power of (-?\d+)\??$/);
   if (power) {
-    const a = BigInt(power[1]);
-    const b = BigInt(power[2]);
-    if (b < 0n) return "";
-    return (a ** b).toString();
+    const base = BigInt(power[1]);
+    const exp = BigInt(power[2]);
+    if (exp < 0n) return "";
+    let result = 1n;
+    let b = base;
+    let e = exp;
+    while (e > 0n) {
+      if (e & 1n) result *= b;
+      b *= b;
+      e >>= 1n;
+    }
+    return result.toString();
   }
 
-  const mult = q.match(/^what is (-?\d+) multiplied by (-?\d+)\??$/);
-  if (mult) {
-    const a = parseInt(mult[1], 10);
-    const b = parseInt(mult[2], 10);
-    return String(a * b);
-  }
+  const whatIs = q.match(/^what is (.+)\??$/);
+  if (whatIs) {
+    const expr = whatIs[1];
 
-  const minus = q.match(/^what is (-?\d+) minus (-?\d+)\??$/);
-  if (minus) {
-    const a = parseInt(minus[1], 10);
-    const b = parseInt(minus[2], 10);
-    return String(a - b);
-  }
+    if (expr.includes("plus") || expr.includes("minus") || expr.includes("multiplied by")) {
+      const tokens: (bigint | "+" | "-" | "*")[] = [];
+      const parts = expr.split(" ");
 
-  const multiPlus = q.match(/^what is (.+)\??$/);
-  if (multiPlus && q.includes("plus")) {
-    const nums = multiPlus[1]
-      .split("plus")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !Number.isNaN(n));
-    if (nums.length > 0) {
-      let sum = 0;
-      for (let i = 0; i < nums.length; i++) sum += nums[i];
-      return String(sum);
+      let i = 0;
+      while (i < parts.length) {
+        const w = parts[i];
+
+        if (/^-?\d+$/.test(w)) {
+          tokens.push(BigInt(w));
+          i += 1;
+          continue;
+        }
+
+        if (w === "plus") {
+          tokens.push("+");
+          i += 1;
+          continue;
+        }
+
+        if (w === "minus") {
+          tokens.push("-");
+          i += 1;
+          continue;
+        }
+
+        if (w === "multiplied" && i + 1 < parts.length && parts[i + 1] === "by") {
+          tokens.push("*");
+          i += 2;
+          continue;
+        }
+
+        i += 1;
+      }
+
+      if (tokens.length > 0) {
+        if (tokens[0] === "+" || tokens[0] === "-" || tokens[0] === "*") return "";
+
+        const output: (bigint | "+" | "-" | "*")[] = [];
+        const ops: ("+" | "-" | "*")[] = [];
+
+        const prec = (op: "+" | "-" | "*"): number => (op === "*" ? 2 : 1);
+
+        for (const t of tokens) {
+          if (typeof t === "bigint") {
+            output.push(t);
+          } else {
+            while (ops.length > 0 && prec(ops[ops.length - 1]) >= prec(t)) {
+              output.push(ops.pop() as "+" | "-" | "*");
+            }
+            ops.push(t);
+          }
+        }
+        while (ops.length > 0) output.push(ops.pop() as "+" | "-" | "*");
+
+        const st: bigint[] = [];
+        for (const t of output) {
+          if (typeof t === "bigint") {
+            st.push(t);
+          } else {
+            if (st.length < 2) return "";
+            const b = st.pop() as bigint;
+            const a = st.pop() as bigint;
+            if (t === "+") st.push(a + b);
+            else if (t === "-") st.push(a - b);
+            else st.push(a * b);
+          }
+        }
+
+        if (st.length === 1) return st[0].toString();
+      }
     }
   }
 
-  const largest = q.match(
-    /^which of the following numbers is the largest: (.+)\??$/
-  );
+  const largest = q.match(/^which of the following numbers is the largest: (.+)\??$/);
   if (largest) {
-    const nums = largest[1]
-      .split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !Number.isNaN(n));
+    const nums =
+      largest[1]
+        .match(/-?\d+/g)
+        ?.map((s) => parseInt(s, 10))
+        .filter((n) => !Number.isNaN(n)) ?? [];
     if (nums.length === 0) return "";
     let best = nums[0];
     for (let i = 1; i < nums.length; i++) if (nums[i] > best) best = nums[i];
     return String(best);
   }
 
-  const primes = q.match(
-    /^which of the following numbers are primes: (.+)\??$/
-  );
+  const primes = q.match(/^which of the following numbers are primes: (.+)\??$/);
   if (primes) {
-    const nums = primes[1]
-      .split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !Number.isNaN(n));
+    const nums =
+      primes[1]
+        .match(/-?\d+/g)
+        ?.map((s) => parseInt(s, 10))
+        .filter((n) => !Number.isNaN(n)) ?? [];
 
     const isPrime = (n: number): boolean => {
       if (n < 2) return false;
@@ -87,18 +144,18 @@ export default function QueryProcessor(query: string): string {
       return true;
     };
 
-    const ps = nums.filter(isPrime);
-    return ps.join(", ");
+    return nums.filter(isPrime).join(", ");
   }
 
   const sqCube = q.match(
     /^which of the following numbers is both a square and a cube: (.+)\??$/
   );
   if (sqCube) {
-    const nums = sqCube[1]
-      .split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => Number.isFinite(n) && n >= 0);
+    const nums =
+      sqCube[1]
+        .match(/-?\d+/g)
+        ?.map((s) => parseInt(s, 10))
+        .filter((n) => Number.isFinite(n) && n >= 0) ?? [];
 
     const isPerfectSixthPower = (n: number): boolean => {
       if (n === 0 || n === 1) return true;
@@ -108,8 +165,7 @@ export default function QueryProcessor(query: string): string {
       return p === n;
     };
 
-    const hits = nums.filter(isPerfectSixthPower);
-    return hits.join(", ");
+    return nums.filter(isPerfectSixthPower).join(", ");
   }
 
   return "";
