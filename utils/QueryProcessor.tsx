@@ -39,7 +39,9 @@ export default function QueryProcessor(query: string): string {
     return String(a * b);
   }
 
-  const largest = q.match(/^which of the following numbers is the largest: (.+)\??$/);
+  const largest = q.match(
+    /^which of the following numbers is the largest: (.+)\??$/
+  );
   if (largest) {
     const nums = largest[1]
       .split(",")
@@ -51,7 +53,9 @@ export default function QueryProcessor(query: string): string {
     return String(best);
   }
 
-  const primes = q.match(/^which of the following numbers are primes: (.+)\??$/);
+  const primes = q.match(
+    /^which of the following numbers are primes: (.+)\??$/
+  );
   if (primes) {
     const nums = primes[1]
       .split(",")
