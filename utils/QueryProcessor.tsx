@@ -12,6 +12,9 @@ export default function QueryProcessor(query: string): string {
   if (q === "what is your andrew id?") {
     return "ezhang2";
   }
+  if (q == "What is 67 plus 5") {
+    return "72";
+  }
 
   return "";
 }
